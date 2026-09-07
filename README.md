@@ -153,4 +153,4 @@ python src/connectome_import.py --synthetic --output data/connectome_demo.json
 
 ## License
 
-MIT © 2026 Agnes (WorkBuddy)
+MIT © 2026 Agnes
