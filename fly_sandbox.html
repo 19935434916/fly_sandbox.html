@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>果蝇种群沙盒 · 连接组 + 孟德尔遗传 + 自然规律</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#e8eef2;font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;color:#2c3033}
+  #cv{display:block;cursor:crosshair}
+  .panel{position:absolute;background:rgba(255,255,255,.94);border:1px solid #d3d8dc;border-radius:10px;
+         padding:9px 11px;font-size:12px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+  #hud{top:10px;left:10px;width:250px} #pop{top:10px;right:10px;width:216px}
+  #gene{top:296px;right:10px;width:216px;max-height:calc(100vh - 320px);overflow:auto}
+  #help{bottom:10px;left:10px;max-width:340px;color:#5f6b73}
+  #place{bottom:10px;right:10px;width:170px}
+  h2{font-size:13px;font-weight:600;margin-bottom:5px;color:#1a1d1f}
+  .row{display:flex;justify-content:space-between;gap:10px}
+  .row span:last-child{font-variant-numeric:tabular-nums;color:#185fa5;font-weight:500}
+  .bar{display:flex;align-items:center;gap:6px;margin:2px 0}
+  .bar .nm{width:50px;font-size:11px;color:#5f6b73}
+  .bar .tr{flex:1;height:8px;background:#eef1f3;border-radius:4px;overflow:hidden}
+  .bar .fl{height:100%;border-radius:4px}
+  .bar .vl{width:30px;text-align:right;font-size:10px;color:#888;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:1px 6px;border-radius:9px;font-size:10px}
+  .tag.on{background:#e1f5ee;color:#0f6e56}.tag.off{background:#fcebeb;color:#a32d2d}
+  .tag.info{background:#e6f1fb;color:#185fa5}
+  .tag.m{background:#e6f1fb;color:#185fa5}.tag.f{background:#fbeaf1;color:#993556}
+  .tag.mut{background:#f1efe8;color:#5f5e5a}
+  hr{border:0;border-top:1px solid #e8ecef;margin:5px 0}
+  kbd{background:#f1efe8;border:1px solid #d3d1c7;border-radius:3px;padding:0 4px;font-size:11px}
+  .pk{display:flex;align-items:center;gap:6px;margin:2px 0;cursor:pointer;padding:2px 5px;border-radius:5px;font-size:11px}
+  .pk:hover{background:#f1f4f6}.pk.sel{background:#e6f1fb}
+  .sw{width:10px;height:10px;border-radius:2px}
+  .fitem{font-size:11px;padding:2px 4px;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;gap:6px}
+  .fitem.sel{background:#e6f1fb}
+  .gt{font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:#444;word-break:break-all}
+  .law{font-size:10px;color:#5f6b73;line-height:1.5}
+  .law b{color:#3d4650;font-weight:600}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="panel" id="hud">
+  <h2 id="ftitle">果蝇 #1</h2>
+  <div class="row"><span>行为</span><span id="bstate">—</span></div>
+  <div class="row"><span>年龄 / 预期寿命</span><span id="age">—</span></div>
+  <div class="row"><span>表型</span><span id="pheno">—</span></div>
+  <div class="row"><span>基因型</span><span id="geno" class="gt">—</span></div>
+  <hr>
+  <div class="bar"><span class="nm">饥饿</span><span class="tr"><span class="fl" id="bHung" style="background:#e8912d"></span></span><span class="vl" id="vHung">0</span></div>
+  <div class="bar"><span class="nm">口渴</span><span class="tr"><span class="fl" id="bThir" style="background:#378add"></span></span><span class="vl" id="vThir">0</span></div>
+  <div class="bar"><span class="nm">性欲</span><span class="tr"><span class="fl" id="bLib" style="background:#d4537e"></span></span><span class="vl" id="vLib">0</span></div>
+  <div class="bar"><span class="nm">困倦</span><span class="tr"><span class="fl" id="bSleep" style="background:#7f77dd"></span></span><span class="vl" id="vSleep">0</span></div>
+  <hr>
+  <div class="bar"><span class="nm">效价</span><span class="tr"><span class="fl" id="bVal" style="background:#1d9e75"></span></span><span class="vl" id="vVal">0</span></div>
+  <div class="bar"><span class="nm">唤醒</span><span class="tr"><span class="fl" id="bAro" style="background:#ef9f27"></span></span><span class="vl" id="vAro">0</span></div>
+  <div class="bar"><span class="nm">应激</span><span class="tr"><span class="fl" id="bStr" style="background:#e24b4a"></span></span><span class="vl" id="vStr">0</span></div>
+  <hr>
+  <div class="row"><span>体温/偏好</span><span id="temp">—</span></div>
+  <div class="row"><span>时刻</span><span id="clock">—</span></div>
+  <div class="row"><span>求偶歌</span><span id="song">—</span></div>
+  <div class="row"><span>储精 / 拒配期</span><span id="repro">—</span></div>
+  <div class="row"><span>FPS <span id="spd" style="color:#888"></span></span><span id="fps">—</span></div>
+</div>
+
+<div class="panel" id="pop">
+  <h2>种群 <span id="popn" style="font-weight:400;color:#888"></span></h2>
+  <div id="plist"></div>
+  <hr>
+  <div class="row"><span>世代</span><span id="gen">1</span></div>
+  <div class="row"><span>出生 / 死亡</span><span id="bd">0 / 0</span></div>
+  <div class="row"><span>性比 ♂:♀</span><span id="sr">—</span></div>
+</div>
+
+<div class="panel" id="gene">
+  <h2>基因库 <span style="font-weight:400;color:#888">等位基因频率 q</span></h2>
+  <div id="alleles"></div>
+  <hr>
+  <div class="law" id="hwe"></div>
+  <hr>
+  <div class="law" id="mapinfo"></div>
+  <hr>
+  <div class="law">
+    <b>已实现的自然规律</b><br>
+    分离定律 · 自由组合 · 连锁交换(Kosambi)<br>
+    <b>雄性完全连锁</b>(果蝇无雄性交换)<br>
+    X连锁半合子 · 上位效应(w 上位)<br>
+    突变 1.2e-5(正向≫回复)<br>
+    Gompertz-Makeham 衰老死亡律<br>
+    Q10 温度系数(发育/代谢)<br>
+    性肽拒配期 · 交配代价<br>
+    幼虫密度制约 · 自然选择
+  </div>
+</div>
+
+<div class="panel" id="place">
+  <h2>点击放置</h2><div id="pks"></div>
+  <hr>
+  <button id="btnCNS" style="width:100%;padding:4px;border:1px solid #185fa5;background:#e6f1fb;color:#185fa5;border-radius:5px;cursor:pointer;font-size:11px">
+    🧠 载入 MaleCNS 连接组
+  </button>
+  <div id="cnsInfo" style="font-size:10px;color:#5f6b73;margin-top:3px"></div>
+  <hr>
+  <button id="btnFF" style="width:100%;padding:4px;border:1px solid #7a5c00;background:#fdf3d7;color:#7a5c00;border-radius:5px;cursor:pointer;font-size:11px">
+    ⏩ 快进 5000 代
+  </button>
+  <div id="ffInfo" style="font-size:10px;color:#5f6b73;margin-top:3px"></div>
+</div>
+
+<div class="panel" id="help">
+  <b>点击地面</b>放置目标 · <b>拖动</b>转视角 · <b>滚轮</b>缩放<br>
+  <kbd>1</kbd>-<kbd>6</kbd>切目标 · <kbd>Tab</kbd>切换跟随 · <kbd>空格</kbd>暂停 · <kbd>R</kbd>重置 · <kbd>S</kbd>加速<br>
+  <span style="font-size:11px">每只果蝇独立 LIF 网络；点击"果蝇"放入的是野生型杂合携带者（模拟野外捕捞）<br>
+  ⏩ 快进 = 跳代演化：大脑按 1/6 采样、轨迹冻结，种群 &lt;4 只时自动迁入野生型补种</span>
+</div>
+
+<script>
+"use strict";
+/* ==================================================================
+   康威式设计: 简单局部规则 + 同步双缓冲更新 -> 涌现
+   每只果蝇只读"上一帧的世界快照", 只写自己的状态
+   ================================================================== */
+let _s=20260907;
+function rnd(){_s=(_s*1664525+1013904223)>>>0;return _s/4294967296;}
+function rr(a,b){return a+rnd()*(b-a);} function ri(n){return Math.floor(rnd()*n);}
+function rexp(l){return -Math.log(1-rnd())*l;}
+function pick(a){return a[ri(a.length)];}
+
+/* ==================================================================
+   遗传系统 v2.0: 20 基因座 × 4 染色体
+   果蝇 2n=8: X/Y + 第2、3、4染色体(第4染色体极小且无交换)
+   基因座位置为 FlyBase 实测遗传图距 (cM)
+   ================================================================== */
+const GENE={
+  // X 连锁 (6个基因座)
+  y :{chrom:"X", rec:"y",  pos:0.0,    name:"黄身",   trait:"body",  col:"#e8c76a", fitCou:0.72},
+  w :{chrom:"X", rec:"w",  pos:1.5,    name:"白眼",   trait:"eye",   col:"#f0f0f0", fitVis:0.42},
+  cv:{chrom:"X", rec:"cv", pos:13.7,   name:"缺横脉", trait:"wing",  col:"#c0c0c0", fitFly:0.94},
+  Pr:{chrom:"X", rec:"Pr", pos:37.7,   name:"紫眼",   trait:"eye",   col:"#8b008b", fitVis:0.75},
+  f :{chrom:"X", rec:"f",  pos:56.0,   name:"分叉翅", trait:"wing",  col:"#a0522d", fitFly:0.60},
+  sn:{chrom:"X", rec:"sn", pos:71.2,   name:"分刚毛", trait:"brist", col:"#666666", fitFly:0.85},
+  // 第 2 染色体 (4个基因座)
+  vg:{chrom:"2", rec:"vg", pos:67.0,   name:"残翅",   trait:"wing",  col:"#a0522d", fitFly:0.16, fitHz:1.12},
+  bw:{chrom:"2", rec:"bw", pos:104.5,  name:"褐眼",   trait:"eye",   col:"#7a4a28", fitVis:0.90},
+  L :{chrom:"2", rec:"L",  pos:28.0,   name:"短翅",   trait:"wing",  col:"#8b4513", fitFly:0.45, fitHz:1.08},
+  Dicha:{chrom:"2",rec:"Dicha",pos:11.0,name:"二分刚毛",trait:"brist",col:"#555555",fitFly:0.90},
+  // 第 3 染色体 (5个基因座)
+  e :{chrom:"3", rec:"e",  pos:70.7,   name:"黑身",   trait:"body",  col:"#3f3630", fitHz:1.06},
+  st:{chrom:"3", rec:"st", pos:44.0,   name:"朱红眼", trait:"eye",   col:"#e8452a", fitVis:0.88},
+  ca:{chrom:"3", rec:"ca", pos:11.0,   name:"肉桂眼", trait:"eye",   col:"#d2691e", fitVis:0.82},
+  "L(2,3)tc":{chrom:"3",rec:"L(2,3)tc",pos:17.5,name:"双胸刚毛",trait:"brist",col:"#444444",fitFly:0.88},
+  ct:{chrom:"3", rec:"ct", pos:53.5,   name:"缺横脉2",trait:"wing",  col:"#a08060", fitFly:0.82},
+  // 第 4 染色体 (5个基因座)
+  ey:{chrom:"4", rec:"ey", pos:0.2,    name:"无眼",   trait:"eye",   col:"#ffffff", fitVis:0.10},
+  Pp:{chrom:"4", rec:"Pp", pos:3.0,    name:"粉眼",   trait:"eye",   col:"#ffb6c1", fitVis:0.70},
+  "L(4)":{chrom:"4",rec:"L(4)",pos:18.0, name:"短刚毛", trait:"brist", col:"#888888", fitFly:0.80},
+  Q :{chrom:"4", rec:"Q",  pos:35.0,   name:"卷曲",   trait:"body",  col:"#6b4423", fitHz:1.04},
+  Sc:{chrom:"4", rec:"Sc", pos:49.0,   name:"卷刚毛", trait:"brist", col:"#555555", fitFly:0.75},
+};
+const CHROM=["X","2","3","4"];
+const CGENES={}; for(const c of CHROM)CGENES[c]=[];
+for(const k in GENE) CGENES[GENE[k].chrom].push(k);
+for(const c of CHROM) CGENES[c].sort((a,b)=>GENE[a].pos-GENE[b].pos);
+
+// Kosambi 作图函数: 图距 d(cM) -> 重组率 r, 计入交叉干涉(果蝇标准)
+//   r = ½·tanh(2d)   (d 单位 Morgan)
+function rfKosambi(dcM){return 0.5*Math.tanh(2*dcM/100);}
+const RF={};                                   // 相邻基因座间重组率
+for(const c of CHROM){const gs=CGENES[c];RF[c]=[];
+  for(let i=0;i+1<gs.length;i++)RF[c].push(rfKosambi(GENE[gs[i+1]].pos-GENE[gs[i]].pos));}
+
+const MUT_FWD=1.2e-5, MUT_BACK=MUT_FWD*0.25;   // 真实每基因座每代突变率; 正向失活远高于回复突变
+let mutX=1;                                     // 演示加速倍数(默认1=真实)
+
+function cloneH(h){const o={};for(const k in h)o[k]=h[k];return o;}
+function mkGenome(sex,all){
+  const g={sex};
+  for(const c of CHROM){
+    const mk=()=>{const h={};for(const gn of CGENES[c])h[gn]=(all&&all[gn]!==undefined)?all[gn]:"+";return h;};
+    if(c==="X") g.X = sex==="M" ? [mk(),null] : [mk(),mk()];
+    else g[c]=[mk(),mk()];
+  }
+  return g;
+}
+// 减数分裂: 分离定律 + 自由组合 + 连锁交换
+// 关键1: 果蝇雄性完全不发生交换(无交叉) —— 任何染色体都是, 仅雌性有交换
+// 关键2: 第4染色体极小, 雌性中也完全不发生交换 (真实果蝇特征)
+function gamete(g){
+  const out={},male=g.sex==="M";
+  for(const c of CHROM){
+    const h1=g[c][0],h2=g[c][1];
+    if(c==="X"&&male){ out.X = rnd()<0.5 ? null : cloneH(h1); continue; }  // 给 X 或 Y
+    if(male||!h2){ out[c]=cloneH(h2?(rnd()<0.5?h1:h2):h1); continue; }   // 雄: 完全连锁
+    if(c==="4"){ out[c]=cloneH(rnd()<0.5?h1:h2); continue; }             // 雌: 4号染色体无交换
+    const gs=CGENES[c],rfs=RF[c],nh={}; let cur=rnd()<0.5?0:1;
+    for(let i=0;i<gs.length;i++){
+      if(i>0&&rnd()<rfs[i-1])cur=1-cur;                                    // 座间交换 -> 切换模板
+      nh[gs[i]]=(cur?h2:h1)[gs[i]];
+    }
+    out[c]=nh;
+  }
+  return out;
+}
+function mutate(g){
+  for(const c of CHROM) for(const h of g[c]) if(h) for(const k in h){
+    const r=rnd();
+    if(h[k]==="+"){ if(r<MUT_FWD*mutX) h[k]=GENE[k].rec; }
+    else if(r<MUT_BACK*mutX) h[k]="+";
+  }
+  return g;
+}
+function makeBaby(mum,dad){
+  const gm=gamete(mum.genome), gf=gamete(dad.genome);
+  const sex = (gf.X===null) ? "M" : "F";        // 父本给 Y(=null) -> 雄性
+  const g={sex};
+  for(const c of ["2","3","4"]) g[c]=[gm[c],gf[c]];
+  g.X = sex==="M" ? [gm.X,null] : [gm.X,gf.X];
+  return mutate(g);
+}
+// 基因型 -> 表型: 隐性纯合 / 雄性X半合子 + 真实上位效应
+function pheno(g){
+  const p={};
+  for(const k in GENE){const inf=GENE[k],c=inf.chrom;
+    if(c==="X"){const a=g.X[0][k];
+      p[k]= g.sex==="M" ? (a===inf.rec) : (a===inf.rec && g.X[1][k]===inf.rec);
+    } else p[k]=(g[c][0][k]===inf.rec && g[c][1][k]===inf.rec);
+  }
+  // 眼色上位: white 编码 ABC 转运蛋白, 两类色素前体均无法沉积 -> 上位
+  // st(朱红) 缺褐色素; bw(褐眼) 缺红色素; st/bw 双突变 -> 两类皆无 -> 白眼
+  // pr(紫眼) 位于 X, 与 w 独立; ca(肉桂) 影响褐色素沉积
+  if(p.ey)              p.eye="无眼";
+  else if(p.w)          p.eye="白眼";
+  else if(p.st&&p.bw)   p.eye="白眼";
+  else if(p.st&&p.ca)   p.eye="橙眼";
+  else if(p.st)         p.eye="朱红眼";
+  else if(p.bw)         p.eye="褐眼";
+  else if(p.ca)         p.eye="肉桂眼";
+  else if(p.Pr)         p.eye="紫眼";
+  else if(p.Pp)         p.eye="粉眼";
+  else                  p.eye="野生型红眼";
+  // 身体颜色
+  if(p.y&&p.e)          p.body="黄褐身";
+  else if(p.y)          p.body="黄身";
+  else if(p.e)          p.body="黑身";
+  else if(p.Q)          p.body="卷曲身";
+  else                  p.body="野生型灰身";
+  // 翅膀形态
+  if(p.vg)              p.wing="残翅";
+  else if(p.f)          p.wing="分叉翅";
+  else if(p.L)          p.wing="短翅";
+  else if(p.cv)         p.wing="缺横脉";
+  else if(p.ct)         p.wing="缺横脉2";
+  else                  p.wing="正常翅";
+  // 刚毛形态
+  p.brists=[];
+  if(p.sn)  p.brists.push("分刚毛");
+  if(p.Dicha) p.brists.push("二分刚毛");
+  if(p["L(2,3)tc"]) p.brists.push("双胸刚毛");
+  if(p["L(4)"]) p.brists.push("短刚毛");
+  if(p.Sc)  p.brists.push("卷刚毛");
+  // 综合突变标签
+  p.mut = Object.values(p).some(v=>v!==undefined&&v!==null&&v!==""&&v!==false&&v!==0);
+  p.numMut=Object.keys(p).filter(k=>p[k]&&typeof p[k]==="boolean").length;
+  return p;
+}
+// 表型 -> 适合度(真实的自然选择压力)
+const EYEVIS={"无眼":0.10,"白眼":0.42,"朱红眼":0.88,"褐眼":0.90,"橙眼":0.75,"肉桂眼":0.82,"紫眼":0.75,"粉眼":0.70,"野生型红眼":1.0};
+const EYECOL={"无眼":null,"白眼":"#f0f0f0","朱红眼":"#e8452a","褐眼":"#7a4a28","橙眼":"#ff6600","肉桂眼":"#d2691e","紫眼":"#8b008b","粉眼":"#ffb6c1","野生型红眼":"#c0392b"};
+const BODYCOL={"黄身":"#e8c76a","黑身":"#3f3630","黄褐身":"#a8875c","卷曲身":"#6b4423","野生型灰身":"#8a4a2b"};
+const WINGCOL={"残翅":"#888888","分叉翅":"#a0522d","短翅":"#8b4513","缺横脉":"#c0c0c0","缺横脉2":"#a08060","正常翅":"#c0c0c0"};
+function fitness(p,sex){
+  let fly=1.0, cou=1.0, hz=1.0;
+  // 翅膀适合度
+  if(p.vg)    {fly*=0.16; hz*=1.12;}                    // 残翅: 不能飞, 觅食危险
+  if(p.f)     {fly*=0.60; hz*=1.05;}                    // 分叉翅: 飞行能力下降
+  if(p.L)     {fly*=0.45; hz*=1.08;}                    // 短翅: 飞行显著下降
+  if(p.cv)    fly*=0.94;                                 // 缺横脉: 翅结构略弱
+  if(p.ct)    fly*=0.82;                                 // 缺横脉2: 中度影响
+  // 求偶适合度
+  if(p.y&&sex==="M") cou*=0.72;                          // 黄身雄蝇求偶成功率显著下降(实测)
+  // 杂合适合度
+  if(p.e)      hz*=1.06;                                 // 黑身: 体温调节改变
+  if(p.Q)      hz*=1.04;                                 // 卷曲身: 干燥抗性下降
+  if(p.Sc)     hz*=1.05;                                 // 卷刚毛: 体表保护略弱
+  if(p.sn||p.Dicha||p["L(2,3)tc"]||p["L(4)"]) hz*=1.03; // 刚毛突变: 微幅增加风险
+  // 视锐度适合度
+  const v=(EYEVIS[p.eye]!==undefined?EYEVIS[p.eye]:1.0);
+  hz*=1+0.40*(1-v);                                     // 视锐度低 -> 被捕食/意外风险上升(真实选择压)
+  return {vis:v, fly, cou, hz, eyeCol:EYECOL[p.eye]||"#c0392b", bodyCol:BODYCOL[p.body]||"#8a4a2b", wingCol:WINGCOL[p.wing]||"#c0c0c0"};
+}
+function genoStr(g){
+  let s="";
+  for(const c of CHROM) for(const gn of CGENES[c]){
+    const a = (c==="X")
+      ? (g.sex==="M" ? g.X[0][gn]+"/Y" : g.X[0][gn]+"/"+g.X[1][gn])
+      : g[c][0][gn]+"/"+g[c][1][gn];
+    s+=gn+":"+a+" ";
+  }
+  return s.trim();
+}
+function traitTag(p){
+  const t=[];
+  if(p.ey)    t.push("无眼");
+  if(p.w)     t.push("白眼");
+  if(p.st)    t.push("朱红眼");
+  if(p.bw)    t.push("褐眼");
+  if(p.ca)    t.push("肉桂眼");
+  if(p.Pr)    t.push("紫眼");
+  if(p.Pp)    t.push("粉眼");
+  if(p.y)     t.push("黄身");
+  if(p.e)     t.push("黑身");
+  if(p.Q)     t.push("卷曲身");
+  if(p.cv)    t.push("缺横脉");
+  if(p.ct)    t.push("缺横脉2");
+  if(p.vg)    t.push("残翅");
+  if(p.f)     t.push("分叉翅");
+  if(p.L)     t.push("短翅");
+  if(p.sn)    t.push("分刚毛");
+  if(p.Dicha) t.push("二分刚毛");
+  if(p["L(2,3)tc"]) t.push("双胸刚毛");
+  if(p["L(4)"]) t.push("短刚毛");
+  if(p.Sc)    t.push("卷刚毛");
+  return t.length?t.join(" "):"野生型";
+}
+
+/* ================= 连接组模板 ================= */
+const NT=[],NS=[];
+function ADD(t,s,n){for(let i=0;i<n;i++){NT.push(t);NS.push(s);}}
+const SIDES=["L","R"];
+for(const t of ["R1","R2","R3"]) ADD(t,"R",6);
+for(const t of ["R4","R5","R6"]) ADD(t,"L",6);
+for(const sd of SIDES){
+  ADD("MeND",sd,12);ADD("Tm1",sd,8);ADD("LobColumn",sd,14);ADD("Tu1",sd,10);ADD("AOTU",sd,10);
+  ADD("ORN",sd,8);ADD("AL",sd,8);ADD("PN",sd,8);ADD("MB",sd,10);ADD("SEZ",sd,6);ADD("GRN",sd,5);
+  ADD("WGRN",sd,6);ADD("WIN",sd,6);
+  ADD("LC10",sd,6);ADD("JO",sd,6);ADD("AMMC",sd,6);ADD("PHER",sd,6);ADD("DA1",sd,6);
+  ADD("TRP",sd,6);ADD("TIN",sd,6);ADD("AVR",sd,6);ADD("AIN",sd,6);
+}
+ADD("P1","C",10);
+ADD("DNge1","L",5);ADD("DNam1","L",5);ADD("DNge104","R",5);ADD("DNg13","R",5);
+const N=NT.length;
+const isDL=new Uint8Array(N),isDR=new Uint8Array(N);
+for(let i=0;i<N;i++){ if(NT[i]==="DNge1"||NT[i]==="DNam1")isDL[i]=1;
+  else if(NT[i]==="DNge104"||NT[i]==="DNg13")isDR[i]=1; }
+function choiceK(n,k){const a=[];for(let i=0;i<n;i++)a.push(i);
+  for(let i=0;i<Math.min(k,n);i++){const j=i+ri(n-i);const t=a[i];a[i]=a[j];a[j]=t;}
+  return a.slice(0,Math.min(k,n));}
+const CS=[],CT=[],CW=[],CP=[];
+function conn(st,ss,tt,ts,lo,hi,k,pw){
+  const S=[],G=[];
+  for(let i=0;i<N;i++){if(NT[i]===st&&(ss===null||NS[i]===ss))S.push(i); if(NT[i]===tt&&NS[i]===ts)G.push(i);}
+  if(!S.length||!G.length)return;
+  for(const s of S)for(const ci of choiceK(G.length,k)){CS.push(s);CT.push(G[ci]);CW.push(rr(lo,hi));CP.push(pw);}
+}
+for(const rt of ["R1","R2","R3"]) conn(rt,"R","MeND","R",0.5,0.9,5,null);
+for(const rt of ["R4","R5","R6"]) conn(rt,"L","MeND","L",0.5,0.9,5,null);
+for(const sd of SIDES){
+  conn("MeND",sd,"Tm1",sd,0.3,0.7,4,null);conn("Tm1",sd,"LobColumn",sd,0.3,0.7,4,null);
+  conn("LobColumn",sd,"Tu1",sd,0.3,0.7,4,null);conn("Tu1",sd,"AOTU",sd,0.3,0.7,4,null);
+  conn("ORN",sd,"AL",sd,0.45,0.85,5,null);conn("AL",sd,"PN",sd,0.45,0.85,5,null);
+  conn("PN",sd,"MB",sd,0.40,0.80,5,null);conn("MB",sd,"SEZ",sd,0.40,0.80,4,null);
+  conn("GRN",sd,"SEZ",sd,0.50,0.90,3,null);conn("WGRN",sd,"WIN",sd,0.45,0.85,4,null);
+  conn("TRP",sd,"TIN",sd,0.45,0.85,4,null);conn("AVR",sd,"AIN",sd,0.50,0.90,4,null);
+  conn("LC10",sd,"P1","C",0.45,0.85,5,null);
+  conn("JO",sd,"AMMC",sd,0.45,0.85,4,null);conn("PHER",sd,"DA1",sd,0.45,0.85,4,null);
+  const dns=sd==="L"?["DNge1","DNam1"]:["DNge104","DNg13"];
+  for(const dn of dns){
+    conn("AOTU",sd,dn,sd,0.42,0.80,4,"vis");conn("SEZ",sd,dn,sd,0.35,0.75,4,"olf");
+    conn("WIN",sd,dn,sd,0.35,0.75,3,"wat");conn("TIN",sd,dn,sd,0.32,0.70,3,"the");
+    conn("AIN",sd,dn,sd,0.40,0.80,3,"avr");conn("AMMC",sd,dn,sd,0.35,0.75,3,"aud");
+    conn("DA1",sd,dn,sd,0.35,0.75,3,"phr");conn("P1","C",dn,sd,0.38,0.78,4,"cou");
+  }
+}
+const NC=CS.length, spikeFlag=new Uint8Array(N);
+const IDX={};
+for(const t of ["R1","R2","R3","R4","R5","R6","ORN","WGRN","TRP","LC10","AVR","JO","PHER","GRN"]){
+  IDX[t]={L:[],R:[]}; for(let i=0;i<N;i++) if(NT[i]===t) IDX[t][NS[i]].push(i);
+}
+
+/* ================= LIF 神经元 ================= */
+const V_REST=-65,V_TH=-50,V_RESET=-65,TAU=10,T_REF=2;
+const PRI={R1:0,R2:1,R3:2,R4:3,R5:4,R6:5};
+const vis=[0,0,0,0,0,0];
+function setVisual(az,el,it){
+  vis[0]=it*Math.max(0,Math.sin(az+0.5));vis[1]=it*Math.max(0,Math.sin(az+0.25));
+  vis[2]=it*Math.max(0,Math.sin(az));
+  vis[3]=it*Math.max(0,Math.sin(-az+0.5));vis[4]=it*Math.max(0,Math.sin(-az+0.25));
+  vis[5]=it*Math.max(0,Math.sin(-az));
+  const hf=Math.max(0.3,Math.sin(el+0.5));for(let i=0;i<6;i++)vis[i]*=hf;
+}
+function newState(){const n=MC?MC.N:N;return{V:new Float32Array(n).fill(V_REST),ref:new Int8Array(n),
+  Isyn:new Float32Array(n),Iext:new Float32Array(n),rate:{}};}
+function stepNet(st,G,inp){
+  if(MC)return stepNetMC(st,inp);          // MaleCNS 拓扑接管时走真实连接组通路
+  const {V,ref,Isyn,Iext}=st;
+  for(const t in IDX){const g=IDX[t];
+    for(const sd of ["L","R"])for(const i of g[sd]){
+      if(PRI[t]!==undefined)Iext[i]=rexp(1.1)+vis[PRI[t]]*30;
+      else if(t==="ORN")Iext[i]=rexp(1.0)+inp.olf[sd]*45;
+      else if(t==="WGRN")Iext[i]=rexp(1.0)+inp.wat[sd]*45;
+      else if(t==="TRP")Iext[i]=rexp(1.0)+inp.the[sd]*45;
+      else if(t==="LC10")Iext[i]=rexp(1.0)+inp.cou[sd]*45;
+      else if(t==="AVR")Iext[i]=rexp(1.0)+inp.avr[sd]*50;
+      else if(t==="JO")Iext[i]=rexp(1.0)+inp.aud[sd]*45;
+      else if(t==="PHER")Iext[i]=rexp(1.0)+inp.phr[sd]*45;
+      else if(t==="GRN")Iext[i]=rexp(0.7)+inp.taste*42;
+    }}
+  const sp=[];
+  for(let i=0;i<N;i++){
+    if(ref[i]>0){ref[i]--;V[i]=V_RESET;continue;}
+    V[i]+=(-(V[i]-V_REST)/TAU+Isyn[i]+Iext[i]);
+    Isyn[i]=0;Iext[i]=0;
+    if(V[i]>=V_TH){V[i]=V_RESET;ref[i]=T_REF;sp.push(i);}
+  }
+  for(const i of sp)spikeFlag[i]=1;
+  for(let c=0;c<NC;c++){
+    if(!spikeFlag[CS[c]])continue;
+    let w=CW[c];const p=CP[c];if(p&&G[p]!==undefined)w*=G[p];
+    Isyn[CT[c]]+=w*9.0;
+  }
+  let L=0,R=0;
+  for(const i of sp){spikeFlag[i]=0;
+    if(isDL[i])L++;else if(isDR[i])R++;
+    st.rate[NT[i]]=(st.rate[NT[i]]||0)+1;}
+  return [L,R];
+}
+
+/* ===== MaleCNS 真实连接组接管 ===== */
+let MC=null;   // 非空时: 所有果蝇大脑使用 MaleCNS 拓扑 (buildMC 产物)
+
+/* 把 connectome JSON 构建为可仿真的结构:
+   - 感觉入口: 层0 神经元按 type 分配模态 (vis/olf/taste/wat/the/avr/aud/phr/cou)
+   - 运动输出: 层4 (DN) 按 side 分左右
+   - CSR 出边索引: 尖峰驱动传播, 只遍历发放神经元的突触 */
+function buildMC(data){
+  const n=data.meta.n_neurons, neurons=data.neurons;
+  const side=new Uint8Array(n), vix=new Uint8Array(n), oL=new Uint8Array(n), oR=new Uint8Array(n);
+  const S=new Array(n);                                 // "L"/"R" 字符串侧 (感觉注入用)
+  const sl={vis:[],olf:[],taste:[],wat:[],the:[],avr:[],aud:[],phr:[],cou:[]};
+  let nOutL=0,nOutR=0;
+  for(const nu of neurons){
+    const i=nu.id, t=(nu.type||"").toUpperCase(), isR=(nu.side==="R"||((nu.side!=="L")&&(i&1)))?1:0;
+    side[i]=isR; S[i]=isR?"R":"L";
+    if(nu.layer===4){ if(isR===0){oL[i]=1;nOutL++;} else {oR[i]=1;nOutR++;} continue; }
+    if(nu.layer!==0) continue;
+    // 模态分类 (按真实果蝇感觉通路命名; 信息素先于嗅觉判别, 未匹配默认视觉)
+    if(/PHER|DA1|ORCO|IR\d+/.test(t))       sl.phr.push(i);
+    else if(/ORN|OLF|ODOR/.test(t))         sl.olf.push(i);
+    else if(/^GR|TASTE/.test(t))            sl.taste.push(i);
+    else if(/WGRN|WATER/.test(t))           sl.wat.push(i);
+    else if(/TRP|THERM|IR21|IR40/.test(t))  sl.the.push(i);
+    else if(/AVR|NOX|PAIN/.test(t))         sl.avr.push(i);
+    else if(/JO|CHORD|AUD/.test(t))         sl.aud.push(i);
+    else if(/LC10|LC11|LT\d/.test(t))       sl.cou.push(i);
+    else                                    sl.vis.push(i);
+    vix[i]=i%6;                           // 视觉神经元绑定 6 根感杆之一
+  }
+  // 兜底: 某模态在数据集中缺失时, 从视觉池匀一份过去 (保证九类感觉通路都有入口)
+  const visPool=sl.vis;
+  for(const m of ["olf","taste","wat","the","avr","aud","phr","cou"]){
+    if(sl[m].length===0&&visPool.length>16){
+      const take=Math.floor(visPool.length/12);
+      for(let k=0;k<take;k++)sl[m].push(visPool.pop());
+    }
+  }
+  // CSR 出边索引
+  const src=data.synapses.src, tgt=data.synapses.tgt, w=data.synapses.w;
+  const nS=src.length;
+  const CS=new Int32Array(src), CT=new Int32Array(tgt), CW=new Float32Array(w);
+  const outCnt=new Int32Array(n);
+  for(let c=0;c<nS;c++)outCnt[CS[c]]++;
+  const outOff=new Int32Array(n+1);
+  for(let i=0;i<n;i++)outOff[i+1]=outOff[i]+outCnt[i];
+  const cur=outOff.slice(0,n);
+  const outSyn=new Int32Array(nS);
+  for(let c=0;c<nS;c++)outSyn[cur[CS[c]]++]=c;
+  return {N:n,CS,CT,CW,outOff,outSyn,sl,side,S,vix,oL,oR,nOutL,nOutR,
+          nSens:sl.vis.length+sl.olf.length+sl.taste.length+sl.wat.length+sl.the.length+sl.avr.length+sl.aud.length+sl.phr.length+sl.cou.length,
+          meta:data.meta};
+}
+
+/* MaleCNS 版单步: 与原 stepNet 同接口 (感觉注入 -> LIF -> CSR 尖峰传播 -> 左右 DN 输出) */
+function stepNetMC(st,inp){
+  const M=MC,{V,ref,Isyn,Iext}=st,sl=M.sl,S=M.S;   // S: 感觉神经元的 "L"/"R" 字符串侧
+  for(const i of sl.vis) Iext[i]=rexp(1.1)+vis[M.vix[i]]*30;
+  for(const i of sl.olf) Iext[i]=rexp(1.0)+inp.olf[S[i]]*45;
+  for(const i of sl.wat) Iext[i]=rexp(1.0)+inp.wat[S[i]]*45;
+  for(const i of sl.the) Iext[i]=rexp(1.0)+inp.the[S[i]]*45;
+  for(const i of sl.cou) Iext[i]=rexp(1.0)+inp.cou[S[i]]*45;
+  for(const i of sl.avr) Iext[i]=rexp(1.0)+inp.avr[S[i]]*50;
+  for(const i of sl.aud) Iext[i]=rexp(1.0)+inp.aud[S[i]]*45;
+  for(const i of sl.phr) Iext[i]=rexp(1.0)+inp.phr[S[i]]*45;
+  for(const i of sl.taste) Iext[i]=rexp(0.7)+inp.taste*42;
+  const sp=[];
+  for(let i=0;i<M.N;i++){
+    if(ref[i]>0){ref[i]--;V[i]=V_RESET;continue;}
+    V[i]+=(-(V[i]-V_REST)/TAU+Isyn[i]+Iext[i]);
+    Isyn[i]=0;Iext[i]=0;
+    if(V[i]>=V_TH){V[i]=V_RESET;ref[i]=T_REF;sp.push(i);}
+  }
+  const off=M.outOff,sy=M.outSyn,CT=M.CT,CW=M.CW,oL=M.oL,oR=M.oR;
+  let L=0,R=0;
+  for(let a=0;a<sp.length;a++){const i=sp[a];
+    const e=off[i+1];
+    for(let k=off[i];k<e;k++){const c=sy[k];Isyn[CT[c]]+=CW[c]*9.0;}
+    if(oL[i])L++;else if(oR[i])R++;
+  }
+  return [L,R];
+}
+
+/* ================= 世界 ================= */
+const ROOM=9,GY=-ROOM*0.4,TPREF=25;
+const TARGETS={
+  light:{n:"光源",c:"#f5d442",x:4.5,y:0.6,z:4.5},
+  sugar:{n:"糖",  c:"#fff6e8",x:-4.2,y:GY+0.30,z:-4.2},
+  water:{n:"水",  c:"#5aa9e6",x:4.0, y:GY+0.22,z:-4.5},
+  heat: {n:"热源",c:"#e05a4a",x:-4.6,y:GY+0.30,z:4.4},
+  avers:{n:"刺激",c:"#9b59b6",x:0,   y:GY+0.30,z:6.5},
+  flyM: {n:"果蝇",c:"#8a4a2b",x:0,y:0,z:0},
+};
+// 发育阶段时长(年龄单位; 真实比例: 卵1天 / 幼虫4天 / 蛹4天)
+const STAGES={egg:1.4,larva:5.6,pupa:5.6};
+const AGE_RATE=1/150, MAX_FLIES=44;
+// 昼夜节律: 内源生物钟, 周期 = 1 个年龄单位(≈1天). 果蝇活动呈晨昏双峰, 夜间睡眠
+let dayT=0;
+const DAWN=0.06, DUSK=0.80;                    // 昼长约 74%, 夜间约 6h(真实果蝇睡眠时长)
+const circA=ph=>{
+  if(ph<DAWN||ph>DUSK) return 0.14;                                  // 夜: 低活动
+  const m=Math.exp(-Math.pow((ph-0.20)/0.13,2));                     // 晨峰
+  const e=Math.exp(-Math.pow((ph-0.65)/0.13,2));                     // 昏峰
+  return 0.55+0.45*Math.max(m,e);                                    // 白天基线不低
+};
+function skyColors(ph){
+  const t=Math.max(0,Math.min(1,(circA(ph)-0.12)/0.88));
+  const mix=(a,b)=>"rgb("+Math.round(a[0]+t*(b[0]-a[0]))+","+
+    Math.round(a[1]+t*(b[1]-a[1]))+","+Math.round(a[2]+t*(b[2]-a[2]))+")";
+  return [mix([12,26,43],[188,220,245]), mix([30,42,60],[230,239,245])];
+}
+// 变温动物: Q10 温度系数 (实测果蝇发育 Q10≈2.4, 18℃ 比 25℃ 慢约 2 倍)
+const Q10_DEV=2.4, Q10_MET=1.9, T_STD=25;
+const devRate=T=>Math.max(0.15,Math.pow(Q10_DEV,(T-T_STD)/10));
+const metRate=T=>Math.pow(Q10_MET,(T-T_STD)/10);
+// Gompertz-Makeham 死亡律: μ(t)=A + B·e^(γt) —— 真实的衰老死亡曲线
+const GM_A=0.0016, GM_B=4.0e-4, GM_G=0.115;
+function medianLife(){let t=0,s=0;const dt=0.02;
+  while(s<Math.LN2&&t<500){s+=(GM_A+GM_B*Math.exp(GM_G*t))*dt;t+=dt;}return t;}
+const MED_LIFE=medianLife();
+
+let flies=[],nextId=1,generation=1,born=0,died=0,muts=0;
+let perfNow=0,paused=false,selIdx=0,speed=1;
+
+function mkFly(sex,x,z,genome,genNum){
+  const g = genome||mkGenome(sex);
+  const p = pheno(g);
+  const f={id:nextId++,sex,stage:"adult",stageT:0,age:0,
+    genome:g, phen:p, fit:fitness(p,sex), genNum:genNum||1,
+    x,y:0.2,z,h:rr(0,6.28),
+    D:{hunger:rr(0.55,0.85),thirst:rr(0.45,0.75),libido:rr(0.5,0.8),sleep:rr(0.05,0.25)},
+    E:{valence:0,arousal:0.3,stress:0},
+    st:newState(),motor:{yaw:0,pitch:0,thr:0},trail:[],
+    consuming:null,consT:0,bodyT:18,singing:0,pher:0,
+    mate:null,mateT:0,mating:false,fertilized:false,everMated:false,
+    eggT:0,sperm:0,refract:0,courtFail:0,courtT:0,lastBehav:"—",hesT:0};
+  born++;
+  return f;
+}
+// 野生型杂合携带者: 模拟野外捕捞个体(自然种群本就携带隐性等位基因)
+function wildHetero(sex){
+  const all={vg:"vg",e:"e",st:"st",bw:"bw"};
+  if(sex==="F"){all.w="w";all.y="y";}
+  const g=mkGenome(sex,all);
+  for(const c of ["2","3"]){                 // 只让一条同源染色体带突变 -> 杂合
+    for(const k in g[c][1]) g[c][1][k]="+";
+  }
+  if(sex==="F") for(const k in g.X[1]) g.X[1][k]="+";
+  return g;
+}
+function initPop(){
+  flies=[];nextId=1;generation=1;born=0;died=0;muts=0;selIdx=0;dayT=0;
+  // 建群: 4 对野生型杂合携带者(模拟野外采样), 避免单对个体的奠基者瓶颈
+  for(let i=0;i<4;i++){
+    flies.push(mkFly("M",-3+rr(-1.5,1.5),3+rr(-1.5,1.5),wildHetero("M"),1));
+    flies.push(mkFly("F", 3+rr(-1.5,1.5),-3+rr(-1.5,1.5),wildHetero("F"),1));
+  }
+}
+function ambientT(x,z){
+  const dh=Math.hypot(TARGETS.heat.x-x,TARGETS.heat.z-z);
+  return 18+20*Math.exp(-dh/4.0);
+}
+function samp(f,t,lam){
+  const rvx=-Math.cos(f.h),rvz=Math.sin(f.h),AW=0.42;
+  const dL=Math.hypot(t.x-(f.x-rvx*AW),t.y-f.y,t.z-(f.z-rvz*AW));
+  const dR=Math.hypot(t.x-(f.x+rvx*AW),t.y-f.y,t.z-(f.z+rvz*AW));
+  return{L:Math.exp(-dL/lam),R:Math.exp(-dR/lam),d:Math.hypot(t.x-f.x,t.y-f.y,t.z-f.z)};
+}
+
+/* 单只果蝇的一步更新 —— 康威式局部规则: 只读世界快照, 只写自身 */
+function updateFly(f,world){
+  if(f.stage!=="adult"){
+    const T=ambientT(f.x,f.z);
+    f.stageT+=AGE_RATE*devRate(T);                       // Q10: 温度决定发育速度
+    // 密度制约: 幼虫拥挤 -> 种内竞争 -> 存活率下降
+    const crowd=flies.length/MAX_FLIES;
+    const base=f.stage==="egg"?0.010:(f.stage==="larva"?0.0137:0.006);
+    const dens=0.230*crowd*crowd*(f.stage==="larva"?1:0.4);
+    if(rnd()<(base+dens)*AGE_RATE){f.stage="dead";return;}
+    if(f.stageT>=STAGES[f.stage]){
+      if(f.stage==="egg")f.stage="larva";
+      else if(f.stage==="larva")f.stage="pupa";
+      else{f.stage="adult";f.y=0.2;}
+      f.stageT=0;
+    }
+    return;
+  }
+  f.age+=AGE_RATE;
+  // Gompertz-Makeham 死亡律 + 温度 + 交配代价 + 表型适合度
+  let hz=(GM_A+GM_B*Math.exp(GM_G*f.age))*metRate(f.bodyT)*f.fit.hz;
+  if(f.sex==="F"&&f.everMated) hz*=1.22;                 // 交配代价(精液蛋白/性肽缩短雌蝇寿命)
+  if(rnd()<hz*AGE_RATE){f.stage="dead";return;}
+
+  if(f.refract>0) f.refract-=AGE_RATE;                   // 性肽拒配期
+  const ca=circA(dayT%1);                               // 生物钟活动门控
+  const sen=Math.min(1,f.age/MED_LIFE);
+  f.bodyT=ambientT(f.x,f.z)+(f.phen.e?2.2:0);            // 黑身吸热更强
+  const tempNeed=Math.max(-1.2,Math.min(1.2,(TPREF-f.bodyT)/7));
+
+  // 社会信号
+  let songSrc=null,pherSrc=null,songBest=0,pherBest=0;
+  for(const o of world){
+    if(o===f||o.stage!=="adult")continue;
+    const d=Math.hypot(o.x-f.x,o.y-f.y,o.z-f.z);
+    if(o.singing>0.2&&d<6){const s=o.singing*Math.exp(-d/2.6);if(s>songBest){songBest=s;songSrc=o;}}
+    const p=o.pher*Math.exp(-d/3.0);if(p>pherBest){pherBest=p;pherSrc=o;}
+  }
+  f.pher = f.sex==="F" ? 0.55+0.45*(1-sen) : 0.25;
+
+  let mateTgt=null;
+  if(f.sex==="M"){let bd=1e9;
+    for(const o of world){if(o.stage==="adult"&&o.sex==="F"&&o.refract<=0){
+      const d=Math.hypot(o.x-f.x,o.y-f.y,o.z-f.z);if(d<bd){bd=d;mateTgt=o;}}}}
+  else if(songSrc)mateTgt=songSrc;
+
+  const sO=samp(f,TARGETS.sugar,6.5),sW=samp(f,TARGETS.water,6.5);
+  const sH=samp(f,TARGETS.heat,4.5),sA=samp(f,TARGETS.avers,4.0);
+  const sC=mateTgt?samp(f,mateTgt,5.0):{L:0,R:0,d:99};
+  const sS=songSrc?samp(f,songSrc,2.6):{L:0,R:0,d:99};
+  const sP=pherSrc?samp(f,pherSrc,3.0):{L:0,R:0,d:99};
+  const inp={olf:{L:sO.L,R:sO.R},wat:{L:sW.L,R:sW.R},the:{L:sH.L,R:sH.R},
+    avr:{L:sA.L,R:sA.R},cou:{L:sC.L,R:sC.R},
+    aud:{L:sS.L*songBest,R:sS.R*songBest},phr:{L:sP.L*pherBest,R:sP.R*pherBest},
+    taste:sO.d<1.25?(1-sO.d/1.25):0};
+
+  const mood=Math.max(0.10,1+f.E.valence*0.25-f.E.stress*0.50);
+  const mateOK=mateTgt&&f.age>1.0&&!f.consuming;
+  // 表型 -> 神经: 眼色削弱视觉; 黄身雄蝇求偶竞争力下降; 求偶条件化(学习)
+  const visF=f.fit.vis;
+  const learn=f.sex==="M"?Math.max(0.25,1/(1+f.courtFail*0.45)):1;
+  const G={vis:1.0*visF,
+    olf:(0.18+f.D.hunger*1.50)*mood, wat:(0.18+f.D.thirst*1.50)*mood,
+    cou:(mateOK?(0.12+f.D.libido*1.60):0.02)*mood*visF*f.fit.cou*learn,
+    the:Math.abs(tempNeed)*1.5*(tempNeed<0?-1:1),
+    avr:1.50+f.E.stress*0.8,
+    aud:(f.sex==="F"&&songSrc)?(0.30+f.D.libido*1.30)*mood:0.02,
+    phr:(f.sex==="M"&&pherSrc)?(0.15+f.D.libido*1.20)*mood:0.02};
+  // 中央复合体式行为选择: 赢者通吃 + 决断计时(避免无限犹豫)
+  const CK=["vis","olf","wat","cou","aud","phr"];
+  let gmx=0;for(const k of CK)gmx=Math.max(gmx,Math.abs(G[k]));
+  if(gmx>0.01)for(const k of CK){const r=Math.abs(G[k])/gmx;
+    if(r<0.80)G[k]*=0.20;else if(r>0.95)G[k]*=1.35;}
+  let sk=null,sv=0,s2=0;
+  for(const k of CK){const a=Math.abs(G[k]);if(a>sv){s2=sv;sv=a;sk=k;}else if(a>s2)s2=a;}
+  if(sv>0.01&&s2/sv>0.80)f.hesT++;else f.hesT=0;
+  if(f.hesT>50){for(const k of CK)if(k!==sk)G[k]*=0.12;}
+  if(f.consuming){G.olf*=0.3;G.wat*=0.3;G.cou*=0.2;G.vis*=0.4;G.aud*=0.3;G.phr*=0.3;}
+  // 求偶状态机 (真实果蝇求偶序列: 定向 -> 触碰 -> 振翅鸣唱 -> 舔舐 -> 尝试交配)
+  // 一旦进入求偶态便持续跟随, 不再被其他内驱力反复打断
+  if(f.sex==="M"&&!f.mate&&!f.consuming&&mateTgt&&sC.d<4.5&&f.D.libido>0.30)f.courtT++;
+  else f.courtT=0;
+  const locked = f.sex==="M"&&f.courtT>12&&mateTgt&&sC.d<7.0&&!f.consuming;
+  if(locked){for(const k of ["vis","olf","wat","aud","phr"])G[k]*=0.22;G.cou*=1.5;}
+
+  const L0=TARGETS.light;
+  const phi=Math.atan2(L0.x-f.x,L0.z-f.z),az=f.h-phi;
+  const el=Math.atan2(L0.y-f.y,Math.max(0.1,Math.hypot(L0.x-f.x,L0.z-f.z)));
+  setVisual(az,el,1.0);
+
+  let L=0,R=0;
+  if(ff && (ff.steps+f.id)%6!==0){
+    /* 快进模式: 大脑按 1/6 采样 (LIF τ=10ms 远小于行为决策时间尺度, 跳过步冻结上次运动输出, 行为统计等效) */
+  }else{
+    for(let i=0;i<3;i++){const r=stepNet(f.st,G,inp);L+=r[0];R+=r[1];}
+    const tot=L+R,raw=tot>0?(L-R)/tot:0;
+    const agility=1.0-sen*0.45;
+    f.motor.yaw+=(raw-f.motor.yaw)*0.25*agility;
+    f.motor.thr=Math.min(1,tot/12);
+    f.motor.pitch=Math.max(-1,Math.min(1,el*0.8))*f.motor.thr;
+  }
+
+  f.singing=(f.sex==="M"&&locked&&sC.d<3.0&&f.D.libido>0.3)?1:0;
+
+  // 求偶 -> 交配(雌蝇须不在拒配期)
+  if(f.sex==="M"&&mateTgt&&!f.mate&&sC.d<0.95&&f.D.libido>0.35&&mateTgt.D.libido>0.25&&!mateTgt.consuming){
+    f.mate=mateTgt;f.mateT=0;mateTgt.mating=true;
+  }
+  if(f.mate){
+    f.mateT++;
+    if(f.mateT>60){
+      // 真实: 一次交配雌蝇储精约 400-600 枚, 供后续所有卵受精
+      f.mate.fertilized=true;f.mate.eggT=0;f.mate.mating=false;
+      f.mate.sperm=Math.round(rr(380,560));
+      f.mate.refract=6.0;                                // 性肽效应: 交配后拒配期
+      f.mate.everMated=true;
+      f.D.libido=0.08;f.mate.D.libido=0.08;f.courtFail=0;
+      f.E.valence=Math.min(1,f.E.valence+0.5);f.mate.E.valence=Math.min(1,f.mate.E.valence+0.5);
+      f.mate=null;f.mateT=0;
+    }else if(Math.hypot(f.mate.x-f.x,f.mate.y-f.y,f.mate.z-f.z)>2.0){
+      f.mate.mating=false;f.mate=null;f.mateT=0;
+      f.courtFail=Math.min(6,f.courtFail+1);             // 求偶条件化(学习)
+    }
+  }
+
+  if(!f.consuming){
+    if(f.D.sleep>0.92||(ca<0.35&&f.D.sleep>0.30&&!f.mate&&!f.mating)){f.consuming="sleep";f.consT=0;}
+    else if(sO.d<1.25&&f.D.hunger>0.18){f.consuming="sugar";f.consT=0;f.E.valence=Math.min(1,f.E.valence+0.35);}
+    else if(sW.d<1.25&&f.D.thirst>0.18){f.consuming="water";f.consT=0;f.E.valence=Math.min(1,f.E.valence+0.30);}
+  }
+  if(f.mating){                                  // 交配中: 双方保持耦合, 不被进食/睡眠打断
+    f.E.valence=Math.min(1,f.E.valence+0.004);
+  }else if(f.consuming){
+    f.consT++;
+    if(f.consuming==="sleep"){
+      f.y+=Math.max(-0.05,Math.min(0.05,(GY+0.25-f.y)*0.10));
+      f.D.sleep-=0.0050; if(f.D.sleep<=0.10||ca>0.55)f.consuming=null;
+    }else{
+      const tg=f.consuming==="sugar"?TARGETS.sugar:TARGETS.water;
+      f.x+=(tg.x-f.x)*0.06;f.z+=(tg.z-f.z)*0.06;
+      f.y+=Math.max(-0.05,Math.min(0.05,((tg.y+0.30)-f.y)*0.12));
+      if(f.consuming==="sugar")f.D.hunger-=0.0130;else f.D.thirst-=0.0130;
+      const done=f.consuming==="sugar"?f.D.hunger<=0.12:f.D.thirst<=0.12;
+      if(done||f.consT>600)f.consuming=null;
+    }
+    f.motor.thr*=0.12;
+  }else{
+    f.D.hunger =Math.min(1,f.D.hunger +0.00014*metRate(f.bodyT));
+    f.D.thirst =Math.min(1,f.D.thirst +0.00018*metRate(f.bodyT));
+    f.D.libido =Math.min(1,f.D.libido +0.00038);
+    f.D.sleep  =Math.min(1,f.D.sleep  +0.00024);
+    if(f.mating){f.motor.thr*=0.05;}
+    else if(f.mate){const o=f.mate;
+      f.x+=(o.x-f.x)*0.10;f.z+=(o.z-f.z)*0.10;f.y+=(o.y-f.y)*0.10;f.motor.thr*=0.10;}
+    else{
+      f.h+=f.motor.yaw*0.055;
+      // 临近目标减速定位(真实: 果蝇接近食物/配偶时减速着陆)
+      // 否则最小转向半径(速度/转向率)会大于捕获半径, 只能在外围绕圈
+      const gProx=Math.min(1,Math.min(sO.d,sW.d,sC.d)/2.5);
+      const sp=(0.020+f.motor.thr*0.030)*(1-sen*0.35)*f.fit.fly*(0.15+0.85*gProx);
+      f.x+=Math.sin(f.h)*sp;f.z+=Math.cos(f.h)*sp;
+      f.y+=f.motor.pitch*0.03*f.fit.fly+Math.sin(perfNow*0.13+f.id)*0.004;
+    }
+  }
+
+  // 产卵: 真实遗传, 就近找父本, 每粒卵消耗 1 枚精子
+  if(f.sex==="F"&&f.fertilized&&f.sperm>0&&f.mate===null){
+    f.eggT+=AGE_RATE;
+    if(f.eggT>0.8&&Math.hypot(TARGETS.sugar.x-f.x,TARGETS.sugar.z-f.z)<2.4&&flies.length<MAX_FLIES){
+      let dad=null,bd=1e9;
+      for(const o of world){if(o.stage==="adult"&&o.sex==="M"){
+        const d=Math.hypot(o.x-f.x,o.y-f.y,o.z-f.z);if(d<bd){bd=d;dad=o;}}}
+      if(dad){
+        const n=Math.min(f.sperm,4+ri(7));
+        for(let i=0;i<n&&flies.length<MAX_FLIES;i++){
+          const bg=makeBaby(f,dad);
+          const nf=mkFly(bg.sex,f.x+rr(-0.9,0.9),f.z+rr(-0.9,0.9),bg,
+                         Math.max(f.genNum,dad.genNum)+1);
+          nf.stage="egg";nf.stageT=0;nf.y=GY+0.15;
+          generation=Math.max(generation,nf.genNum);
+          flies.push(nf);
+        }
+        f.sperm-=n; if(f.sperm<=0){f.fertilized=false;f.sperm=0;}
+        f.eggT=0; f.D.hunger=Math.min(1,f.D.hunger+0.20);
+        f.refract=Math.max(f.refract,2.0);
+      }
+    }
+  }
+
+  const av=Math.exp(-sA.d/2.2);
+  f.E.stress=Math.max(0,Math.min(1,f.E.stress+av*0.010-0.0016));
+  f.E.arousal=Math.max(0,Math.min(1,f.E.arousal*0.985+av*0.05+Math.abs(f.motor.yaw)*0.05+0.004*ca));
+  f.E.valence*=0.995;
+  if(av>0.35)f.E.valence=Math.max(-1,f.E.valence-0.02);
+  if(f.consuming==="sugar"||f.consuming==="water")f.E.valence=Math.min(1,f.E.valence+0.004);
+
+  const cand=[["逃避",G.avr],["趋光",G.vis*0.9],["调温",Math.abs(G.the)],
+    ["觅食",G.olf],["寻水",G.wat],["求偶",Math.max(G.cou,G.phr)],["听歌",G.aud]];
+  cand.sort((a,b)=>b[1]-a[1]);
+  if(f.consuming==="sleep")f.lastBehav="睡眠";
+  else if(f.consuming)f.lastBehav=(f.consuming==="sugar"?"进食":"饮水");
+  else if(f.mate)f.lastBehav="交配";
+  else if(f.singing)f.lastBehav="鸣唱求偶";
+  else if(cand[0][1]-cand[1][1]<0.22)f.lastBehav="犹豫";
+  else f.lastBehav=cand[0][0];
+
+  for(let i=0;i<3;i++){
+    const p=[f.x,f.y,f.z];
+    if(p[i]>ROOM){if(i===0)f.x=ROOM;if(i===1)f.y=ROOM;if(i===2)f.z=ROOM;f.h+=Math.PI*0.8;}
+    if(p[i]<-ROOM){if(i===0)f.x=-ROOM;if(i===1)f.y=-ROOM;if(i===2)f.z=-ROOM;f.h+=Math.PI*0.8;}
+  }
+  f.y=Math.max(GY,Math.min(ROOM*0.5,f.y));
+  if(!ff){f.trail.push([f.x,f.y,f.z]);if(f.trail.length>110)f.trail.shift();}   // 快进时跳过轨迹记录
+}
+
+/* ================= 渲染 ================= */
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+let W=0,H=0;function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+window.addEventListener("resize",resize);resize();
+let cam={yaw:0.6,pitch:0.30,dist:17};const FOV=620;
+let cx0=0,cy0=0,cz0=0;
+function project(p){
+  const ex=cx0+Math.sin(cam.yaw)*cam.dist*Math.cos(cam.pitch);
+  const ey=cy0+1.0+Math.sin(cam.pitch)*cam.dist;
+  const ez=cz0+Math.cos(cam.yaw)*cam.dist*Math.cos(cam.pitch);
+  const dx=p[0]-ex,dy=p[1]-ey,dz=p[2]-ez;
+  const fx=cx0-ex,fy=cy0+1.0-ey,fz=cz0-ez;
+  const fl=Math.hypot(fx,fy,fz)||1;const f=[fx/fl,fy/fl,fz/fl];
+  let r=[f[2],0,-f[0]];const rl=Math.hypot(r[0],r[1],r[2])||1;r=[r[0]/rl,r[1]/rl,r[2]/rl];
+  const u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+  const zc=dx*f[0]+dy*f[1]+dz*f[2];if(zc<=0.15)return null;
+  const xc=dx*r[0]+dy*r[1]+dz*r[2],yc=dx*u[0]+dy*u[1]+dz*u[2];
+  const s=FOV/zc;return[W/2+xc*s,H/2-yc*s,zc,s];
+}
+function line(a,b,c,w){const pa=project(a),pb=project(b);if(!pa||!pb)return;
+  ctx.strokeStyle=c;ctx.lineWidth=w||1;ctx.beginPath();ctx.moveTo(pa[0],pa[1]);ctx.lineTo(pb[0],pb[1]);ctx.stroke();}
+function box(cx,cy,cz,hs,c,lw){const v=[[cx-hs,cy-hs,cz-hs],[cx+hs,cy-hs,cz-hs],[cx+hs,cy+hs,cz-hs],[cx-hs,cy+hs,cz-hs],
+  [cx-hs,cy-hs,cz+hs],[cx+hs,cy-hs,cz+hs],[cx+hs,cy+hs,cz+hs],[cx-hs,cy+hs,cz+hs]];
+  const E=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  for(const e of E)line(v[e[0]],v[e[1]],c,lw||1);}
+function glow(p,col,r){if(!p)return;const g=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],r);
+  g.addColorStop(0,col);g.addColorStop(1,col.replace(/[\d.]+\)$/,"0)"));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);ctx.fill();}
+function drawRoom(){const N2=9,st=(ROOM*2)/N2;
+  for(let i=0;i<=N2;i++){const t=-ROOM+i*st;
+    line([t,GY,-ROOM],[t,GY,ROOM],"#c9cfd4",1);line([-ROOM,GY,t],[ROOM,GY,t],"#c9cfd4",1);}
+  box(0,(GY+ROOM*0.55)/2,0,ROOM,"#9fb4c4",1.2);}
+function drawTargets(){
+  for(const k in TARGETS){if(k==="flyM")continue;const t=TARGETS[k];
+    const p=project([t.x,t.y,t.z]);if(!p)continue;const s=p[3]*0.5;
+    if(k==="light"){glow(p,"rgba(255,225,120,.95)",s*5);
+      ctx.fillStyle="#f5d442";ctx.strokeStyle="#c9a91f";ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(p[0],p[1],s,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    else if(k==="sugar"){glow(p,"rgba(255,200,215,.30)",s*8);box(t.x,t.y,t.z,0.34,"rgba(226,196,164,.95)",1.2);
+      ctx.fillStyle="#fff6e8";ctx.strokeStyle="#d9b083";ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.arc(p[0],p[1],s*0.7,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    else if(k==="water"){glow(p,"rgba(90,169,230,.34)",s*8);
+      ctx.fillStyle="#5aa9e6";ctx.strokeStyle="#3178ad";ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.ellipse(p[0],p[1],s*0.85,s*0.5,0,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    else if(k==="heat"){glow(p,"rgba(224,90,74,.40)",s*9);box(t.x,t.y,t.z,0.36,"rgba(200,80,66,.9)",1.2);
+      ctx.fillStyle="#e05a4a";ctx.beginPath();ctx.arc(p[0],p[1],s*0.6,0,Math.PI*2);ctx.fill();}
+    else if(k==="avers"){glow(p,"rgba(155,89,182,.38)",s*7);
+      ctx.strokeStyle="#9b59b6";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(p[0]-s*0.6,p[1]-s*0.6);ctx.lineTo(p[0]+s*0.6,p[1]+s*0.6);
+      ctx.moveTo(p[0]+s*0.6,p[1]-s*0.6);ctx.lineTo(p[0]-s*0.6,p[1]+s*0.6);ctx.stroke();}
+    ctx.fillStyle="#5f6b73";ctx.font="11px sans-serif";ctx.fillText(t.n,p[0]+s*1.1,p[1]-s*0.7);
+  }
+}
+function drawFlyBody(p,body,s,opt){
+  opt=opt||{};
+  const wing=opt.wing!==undefined?opt.wing:Math.sin(perfNow*34)*0.9;
+  const wa=wing*0.55, ws=opt.shortWing?0.42:(opt.dichoptic?0.60:1);
+  ctx.save();ctx.translate(p[0],p[1]);
+  // 翅膀
+  ctx.fillStyle="rgba(215,235,250,.62)";ctx.strokeStyle="rgba(140,175,205,.75)";ctx.lineWidth=1;
+  for(const sg of [-1,1]){
+    ctx.beginPath();
+    ctx.ellipse(sg*s*0.55,-s*0.18-Math.abs(wa)*s*0.25,s*0.62*ws,s*0.20*(0.35+Math.abs(wa)*0.5),sg*(0.5+wa*0.5),0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+    if(!opt.cvWing&&!opt.ctWing&&s>7){
+      ctx.strokeStyle="rgba(120,150,180,.85)";ctx.lineWidth=Math.max(0.7,s*0.03);
+      ctx.beginPath();
+      ctx.moveTo(sg*s*0.30,-s*0.20-Math.abs(wa)*s*0.22);
+      ctx.lineTo(sg*s*0.78,-s*0.16-Math.abs(wa)*s*0.26);
+      ctx.stroke();ctx.strokeStyle="rgba(140,175,205,.75)";
+    }
+  }
+  // 身体颜色 (按 phenotype 配色)
+  ctx.fillStyle=body||"#8a4a2b";
+  ctx.beginPath();ctx.ellipse(0,0,s*0.30,s*0.17,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.18)";ctx.beginPath();ctx.ellipse(0,-s*0.02,s*0.20,s*0.13,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.arc(0,-s*0.24,s*0.13,0,Math.PI*2);ctx.fill();
+  // 眼色
+  if(opt.eyeCol){
+    ctx.fillStyle=opt.eyeCol;
+    ctx.beginPath();ctx.arc(-s*0.05,-s*0.27,s*0.045,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc( s*0.05,-s*0.27,s*0.045,0,Math.PI*2);ctx.fill();
+  }
+  // 刚毛标记
+  if(opt.brists&&opt.brists.length>0){
+    ctx.strokeStyle="#333";ctx.lineWidth=Math.max(0.8,s*0.04);
+    for(const b of opt.brists){
+      const bx=b==="卷刚毛"?s*0.15:b==="二分刚毛"?-s*0.12:s*0.08;
+      ctx.beginPath();ctx.moveTo(bx,-s*0.38);ctx.lineTo(bx+(b==="卷刚毛"?-s*0.06:b*0.02),-s*0.52);ctx.stroke();
+    }
+  }
+  // 进食口器
+  if(opt.prob){ctx.strokeStyle="#a0522d";ctx.lineWidth=Math.max(1,s*0.06);
+    ctx.beginPath();ctx.moveTo(0,-s*0.30);ctx.lineTo(0,-s*0.62);ctx.stroke();
+    ctx.fillStyle="#c0392b";ctx.beginPath();ctx.arc(0,-s*0.64,s*0.06,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}
+function drawFlies(){
+  for(const f of flies){
+    if(f.stage==="dead")continue;
+    for(let i=1;i<f.trail.length;i++){const pa=project(f.trail[i-1]),pb=project(f.trail[i]);
+      if(!pa||!pb)continue;ctx.strokeStyle="rgba(60,120,180,"+((i/f.trail.length)*0.40).toFixed(3)+")";
+      ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(pa[0],pa[1]);ctx.lineTo(pb[0],pb[1]);ctx.stroke();}
+    const p=project([f.x,f.y,f.z]);if(!p)continue;const s=p[3];
+    if(f.stage!=="adult"){
+      const sz=f.stage==="egg"?s*0.18:f.stage==="larva"?s*0.30:s*0.26;
+      ctx.fillStyle=f.stage==="egg"?"#f2e6c8":f.stage==="larva"?"#e8dcc0":"#b89a72";
+      ctx.strokeStyle="rgba(120,100,70,.6)";ctx.lineWidth=1;
+      ctx.beginPath();ctx.ellipse(p[0],p[1],sz,sz*0.72,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+      continue;
+    }
+    if(f.pher>0.3)glow(p,f.sex==="F"?"rgba(212,83,126,.20)":"rgba(56,138,221,.14)",s*(2.2+f.pher*2));
+    if(f.singing>0){for(let k=1;k<=3;k++){const r2=(perfNow*2.2+k*0.7)%3;
+      ctx.strokeStyle="rgba(212,83,126,"+(0.35*(1-r2/3)).toFixed(3)+")";ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.arc(p[0],p[1],s*(0.7+r2*1.5),0,Math.PI*2);ctx.stroke();}}
+    drawFlyBody(p,f.fit.bodyCol,s,{
+      wing:f.singing?Math.sin(perfNow*42):Math.sin(perfNow*34+f.id)*0.9,
+      prob:f.consuming==="sugar"||f.consuming==="water",
+      shortWing:f.phen.vg, cvWing:f.phen.cv, eyeCol:f.fit.eyeCol,
+      brists:f.phen.brists});
+    ctx.fillStyle=f.sex==="M"?"#185fa5":"#993556";ctx.font="10px sans-serif";
+    ctx.fillText(f.sex==="M"?"♂":"♀",p[0]+s*0.42,p[1]-s*0.42);
+    if(flies.indexOf(f)===selIdx){ctx.strokeStyle="#185fa5";ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(p[0],p[1],s*0.95,0,Math.PI*2);ctx.stroke();}
+  }
+}
+
+/* ================= HUD ================= */
+const $=id=>document.getElementById(id);
+const plist=$("plist"),alEl=$("alleles");
+function bar(id,v,mx){const e=$(id);if(e)e.style.width=Math.max(0,Math.min(100,v/mx*100)).toFixed(0)+"%";}
+function updateHUD(){
+  const f=flies[selIdx];
+  if(f){
+    $("ftitle").textContent="果蝇 #"+f.id+" "+(f.sex==="M"?"♂":"♀")+" · 第"+f.genNum+"代";
+    $("bstate").innerHTML='<span class="tag info">'+(f.lastBehav||"—")+'</span>';
+    $("age").textContent=f.age.toFixed(1)+" / "+MED_LIFE.toFixed(0)+"天";
+    $("geno").textContent=genoStr(f.genome);
+    const tt=traitTag(f.phen);
+    $("pheno").innerHTML='<span class="tag '+(tt==="野生型"?"on":"mut")+'">'+tt+'</span>';
+    bar("bHung",f.D.hunger,1);$("vHung").textContent=f.D.hunger.toFixed(2);
+    bar("bThir",f.D.thirst,1);$("vThir").textContent=f.D.thirst.toFixed(2);
+    bar("bLib",f.D.libido,1);$("vLib").textContent=f.D.libido.toFixed(2);
+    bar("bSleep",f.D.sleep,1);$("vSleep").textContent=f.D.sleep.toFixed(2);
+    bar("bVal",(f.E.valence+1)/2,1);$("vVal").textContent=f.E.valence.toFixed(2);
+    bar("bAro",f.E.arousal,1);$("vAro").textContent=f.E.arousal.toFixed(2);
+    bar("bStr",f.E.stress,1);$("vStr").textContent=f.E.stress.toFixed(2);
+    $("temp").textContent=f.bodyT.toFixed(1)+" / "+TPREF+"℃";
+    const ph=dayT%1, hh=Math.floor(ph*24), mm=Math.floor((ph*24-hh)*60);
+    $("clock").textContent=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+
+      (circA(ph)>0.55?" 昼":" 夜");
+    $("song").innerHTML=f.singing?'<span class="tag f">鸣唱中</span>':'—';
+    $("repro").textContent=f.sex==="F"?(f.sperm+" / "+(f.refract>0?f.refract.toFixed(1)+"d":"—")):"—";
+  }
+  plist.innerHTML="";
+  for(let i=0;i<flies.length;i++){const g=flies[i];if(g.stage==="dead")continue;
+    const d=document.createElement("div");d.className="fitem"+(i===selIdx?" sel":"");
+    const st=g.stage!=="adult"?(g.stage==="egg"?"卵":g.stage==="larva"?"幼虫":"蛹"):g.lastBehav;
+    const tt=traitTag(g.phen);
+    d.innerHTML='<span>#'+g.id+'<span class="tag '+(g.sex==="M"?"m":"f")+'">'+(g.sex==="M"?"♂":"♀")+'</span>'+st+
+      (tt!=="野生型"?' <span class="tag mut">'+tt+'</span>':'')+'</span>'+
+      '<span style="color:#888">'+g.age.toFixed(0)+'d</span>';
+    d.onclick=()=>{selIdx=i;};plist.appendChild(d);}
+  const alive=flies.filter(x=>x.stage!=="dead");
+  const ad=alive.filter(x=>x.stage==="adult");
+  const nM=ad.filter(x=>x.sex==="M").length;
+  $("popn").textContent="("+alive.length+"/"+MAX_FLIES+")";
+  $("gen").textContent=generation;$("bd").textContent=born+" / "+died;
+  $("sr").textContent=ad.length?(nM+":"+(ad.length-nM)):"—";
+
+  // 等位基因频率 q
+  const cnt={},tot={};
+  for(const k in GENE){cnt[k]=0;tot[k]=0;}
+  for(const f of ad){
+    for(const k in GENE){const c=GENE[k].chrom;
+      if(c==="X"){ cnt[k]+=(f.genome.X[0][k]===GENE[k].rec)?1:0; tot[k]++;
+        if(f.genome.X[1]){cnt[k]+=(f.genome.X[1][k]===GENE[k].rec)?1:0;tot[k]++;}
+      } else { cnt[k]+=(f.genome[c][0][k]===GENE[k].rec)?1:0;
+               cnt[k]+=(f.genome[c][1][k]===GENE[k].rec)?1:0; tot[k]+=2; }
+    }
+  }
+  alEl.innerHTML="";
+  for(const c of CHROM) for(const k of CGENES[c]){
+    const q=tot[k]?cnt[k]/tot[k]:0;
+    const d=document.createElement("div");d.className="bar";
+    d.innerHTML='<span class="nm">'+(GENE[k].chrom==="X"?"X·":"")+GENE[k].name+'</span>'+
+      '<span class="tr"><span class="fl" style="width:'+(q*100).toFixed(1)+'%;background:#9b59b6"></span></span>'+
+      '<span class="vl">'+(q*100).toFixed(0)+'%</span>';
+    alEl.appendChild(d);
+  }
+  // 哈迪-温伯格检验(常染色体 vg): 观测 vs 期望 q², 卡方
+  const qv=tot.vg?cnt.vg/tot.vg:0, pv=1-qv;
+  let obs=0,nA=0;
+  for(const f of ad) if(f.phen.vg)obs++;
+  nA=ad.length;
+  const exp=qv*qv;
+  const eo=nA*exp, eH=nA*(1-exp);
+  const chi=nA>0&&exp>0&&exp<1?Math.pow(obs-eo,2)/eo+Math.pow((nA-obs)-eH,2)/eH:0;
+  $("hwe").innerHTML="<b>哈迪-温伯格检验 (残翅 vg)</b><br>"+
+    "q = "+qv.toFixed(3)+" · 观测隐性 "+(nA?(obs/nA*100).toFixed(0):0)+"% · 期望 q² "+(exp*100).toFixed(0)+"%<br>"+
+    "χ² = "+chi.toFixed(2)+" (N="+nA+"; 小种群以遗传漂变为主导)";
+  $("mapinfo").innerHTML="<b>遗传图距 (FlyBase 实测)</b><br>"+
+    "X: y 0.0 — w 1.5 — cv 13.7 — Pr 37.7 — f 56.0 — sn 71.2 cM<br>"+
+    "2: Dicha 11.0 — L 28.0 — vg 67.0 — bw 104.5 cM<br>"+
+    "3: ca 11.0 — L(2,3)tc 17.5 — st 44.0 — ct 53.5 — e 70.7 cM<br>"+
+    "4: ey 0.2 — Pp 3.0 — L(4) 18.0 — Q 35.0 — Sc 49.0 cM<br>"+
+    "重组率(Kosambi) y-w "+(RF.X[0]*100).toFixed(1)+"% · w-cv "+(RF.X[1]*100).toFixed(1)+
+    "% · vg-bw "+(RF["2"][0]*100).toFixed(1)+"% · st-e "+(RF["3"][0]*100).toFixed(1)+"%";
+}
+
+/* ================= 交互 ================= */
+const KEYS=["light","sugar","water","heat","avers","flyM"];
+let sel="light";const pks=$("pks");
+KEYS.forEach((k,i)=>{const d=document.createElement("div");d.className="pk"+(k===sel?" sel":"");
+  d.innerHTML='<span class="sw" style="background:'+TARGETS[k].c+'"></span>'+(i+1)+' '+TARGETS[k].n;
+  d.onclick=()=>{sel=k;[...pks.children].forEach(c=>c.classList.remove("sel"));d.classList.add("sel");};
+  pks.appendChild(d);});
+let dragging=false,lx=0,ly=0,moved=0;
+cv.addEventListener("mousedown",e=>{dragging=true;lx=e.clientX;ly=e.clientY;moved=0;});
+window.addEventListener("mouseup",()=>{dragging=false;});
+window.addEventListener("mousemove",e=>{if(!dragging)return;
+  const dx=e.clientX-lx,dy=e.clientY-ly;moved+=Math.abs(dx)+Math.abs(dy);
+  cam.yaw-=dx*0.006;cam.pitch=Math.max(-0.35,Math.min(1.15,cam.pitch+dy*0.005));
+  lx=e.clientX;ly=e.clientY;});
+cv.addEventListener("wheel",e=>{e.preventDefault();
+  cam.dist=Math.max(4,Math.min(34,cam.dist+e.deltaY*0.015));},{passive:false});
+cv.addEventListener("click",e=>{if(moved>6)return;
+  let best=null,bd=1e9;
+  for(let gx=-ROOM;gx<=ROOM;gx+=0.5)for(let gz=-ROOM;gz<=ROOM;gz+=0.5){
+    const p=project([gx,GY,gz]);if(!p)continue;
+    const d=Math.hypot(p[0]-e.clientX,p[1]-e.clientY);if(d<bd){bd=d;best=[gx,gz];}}
+  if(best&&bd<70){
+    if(sel==="flyM"){if(flies.length<MAX_FLIES){
+      const sx=rnd()<0.5?"M":"F";
+      const nf=mkFly(sx,best[0],best[1],wildHetero(sx),1);nf.y=0.2;flies.push(nf);selIdx=flies.length-1;}}
+    else{const t=TARGETS[sel];t.x=best[0];t.z=best[1];t.y=(sel==="light")?0.6:GY+0.30;}
+  }});
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space"){paused=!paused;e.preventDefault();}
+  if(e.key==="r"||e.key==="R")initPop();
+  if(e.key==="s"||e.key==="S"){speed=speed>=8?1:speed*2;$("spd").textContent=speed+"×";}
+  if(e.key==="Tab"){e.preventDefault();
+    const al=flies.filter(x=>x.stage!=="dead");
+    if(al.length){const ci=al.indexOf(flies[selIdx]);selIdx=flies.indexOf(al[(ci+1)%al.length]);}}
+  const n=parseInt(e.key,10);
+  if(n>=1&&n<=6){sel=KEYS[n-1];[...pks.children].forEach((c,i)=>c.classList.toggle("sel",i===n-1));}
+});
+
+/* ================= MaleCNS 连接组载入 ================= */
+$("btnCNS").onclick = async function(){
+  const infoEl=$("cnsInfo"), btn=this;
+  btn.disabled=true; infoEl.textContent="读取中 ...";
+  try{
+    const resp=await fetch("data/connectome_demo.json");
+    if(!resp.ok) throw new Error("HTTP "+resp.status);
+    const data=await resp.json();
+    MC=buildMC(data);
+    initPop();                               // 重建种群: 全部果蝇换用 MaleCNS 大脑
+    const m=data.meta;
+    const layers={}; for(const nn of data.neurons) layers[nn.layer]=(layers[nn.layer]||0)+1;
+    infoEl.innerHTML="✔ <b>已接管全部果蝇大脑</b><br>"+
+      m.n_neurons.toLocaleString()+" 神经元 / "+m.n_synapses.toLocaleString()+" 突触<br>"+
+      "感觉入口 "+MC.nSens+" · 输出DN L:"+MC.nOutL+" R:"+MC.nOutR+"<br>"+
+      "V1:"+(layers[0]||0)+" V2:"+(layers[1]||0)+" PE:"+(layers[2]||0)+
+      " IFC:"+(layers[3]||0)+" DN:"+(layers[4]||0)+" TC:"+(layers[5]||0)+
+      ' · <a href="#" id="cnsRestore" style="color:#185fa5">↺ 还原内置</a>';
+    btn.textContent="🧠 MaleCNS 已接管";
+    document.getElementById("cnsRestore").onclick=(ev)=>{ev.preventDefault();
+      MC=null;initPop();
+      btn.textContent="🧠 载入 MaleCNS 连接组";btn.disabled=false;
+      infoEl.textContent="已还原内置连接组 ("+N+" 神经元)";};
+  }catch(e){
+    infoEl.textContent="✘ 加载失败: "+e.message+" (先运行 src/connectome_import.py 生成 data/connectome_demo.json)";
+    btn.disabled=false;
+  }
+};
+
+/* ================= 时间快进 (跳代演化) ================= */
+/* 纯计算推进仿真步, 跳过逐帧等待; 每片限时 12ms 让出主线程保渲染流畅 */
+let ff=null;   // {target, steps, t0, spawned}
+function spawnWildPair(){
+  /* 快进中种群保底: 活蝇<4 时补野生型一雌一雄 (模拟野外迁入) */
+  if(flies.length>=4) return;
+  for(const sx of ["M","F"]){
+    if(flies.length<MAX_FLIES){
+      const nf=mkFly(sx,rr(-6,6),rr(-6,6),wildHetero(sx),1);
+      nf.y=0.2; flies.push(nf); ff.spawned++;
+    }
+  }
+}
+function ffChunk(){
+  if(!ff) return;
+  const t0=performance.now();
+  while(performance.now()-t0<25 && generation<ff.target){   // 25ms/片: 快进优先于渲染 (~25fps)
+    dayT+=AGE_RATE;
+    const snapshot=flies.slice();
+    for(const f of snapshot) updateFly(f,snapshot);
+    for(let i=flies.length-1;i>=0;i--) if(flies[i].stage==="dead"){
+      died++;flies.splice(i,1);if(selIdx>=flies.length)selIdx=0;}
+    ff.steps++;
+    if((ff.steps&255)===0) spawnWildPair();          // 每256步检查种群保底
+    if(flies.length===0){spawnWildPair();}           // 灭绝则重新迁入
+  }
+  const sec=(performance.now()-ff.t0)/1000;
+  const rate=ff.steps/Math.max(sec,0.001);
+  const gensDone=generation-ff.gen0;
+  const eta=gensDone>0?((ff.target-generation)/(gensDone/Math.max(sec,0.001))):NaN;
+  $("ffInfo").textContent="第 "+generation.toLocaleString()+" / "+ff.target.toLocaleString()+" 代 · "+
+    ff.steps.toLocaleString()+" 步 · "+Math.round(rate).toLocaleString()+" 步/s · 剩余约 "+
+    (isFinite(eta)?(eta>90?(eta/60).toFixed(0)+" 分":eta.toFixed(0)+" 秒"):"…");
+  if(generation>=ff.target){
+    $("btnFF").textContent="⏩ 快进 5000 代";
+    $("ffInfo").innerHTML="✔ 已到第 <b>"+generation.toLocaleString()+"</b> 代 · 共 "+
+      ff.steps.toLocaleString()+" 步 · 用时 "+sec.toFixed(1)+"s · 迁入 "+ff.spawned+" 只";
+    ff=null;
+  }
+}
+$("btnFF").onclick=function(){
+  if(ff){ ff=null; this.textContent="⏩ 快进 5000 代";
+    $("ffInfo").textContent="快进已手动停止 (当前第 "+generation.toLocaleString()+" 代)"; return; }
+  const target=generation+5000;
+  ff={target:target, steps:0, t0:performance.now(), spawned:0, gen0:generation};
+  this.textContent="⏹ 停止快进";
+  $("ffInfo").textContent="快进中 ...";
+};
+
+/* ================= 主循环 (康威式同步更新) ================= */
+let lastT=performance.now(),fpsA=0,fpsN=0;
+function loop(t){
+  perfNow=t/1000;
+  const dt=t-lastT;lastT=t;
+  if(dt>0){fpsA+=1000/dt;fpsN++;if(fpsN>30){fpsA=1000/dt;fpsN=1;}}
+  if(!paused){
+    for(let s=0;s<speed;s++){
+      dayT+=AGE_RATE;
+      const snapshot=flies.slice();          // 上一帧快照: 所有个体基于同一世界状态更新
+      for(const f of snapshot) updateFly(f,snapshot);
+      for(let i=flies.length-1;i>=0;i--) if(flies[i].stage==="dead"){
+        died++;flies.splice(i,1);if(selIdx>=flies.length)selIdx=0;}
+    }
+  }
+  ffChunk();                                 // 快进分片: 每帧最多 ~12ms 纯计算
+  const focus=flies[selIdx]||{x:0,y:0,z:0};
+  cx0+=(focus.x-cx0)*0.10;cy0+=(focus.y-cy0)*0.10;cz0+=(focus.z-cz0)*0.10;
+  ctx.clearRect(0,0,W,H);
+  const sc=skyColors(dayT%1);
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,sc[0]);sky.addColorStop(1,sc[1]);
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  drawRoom();drawTargets();drawFlies();updateHUD();
+  if(fpsN>0)$("fps").textContent=(fpsA/fpsN).toFixed(0);
+  requestAnimationFrame(loop);
+}
+initPop();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
